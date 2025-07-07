@@ -1,27 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Omeglix – Stranger Chat</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Omeglix – Chat</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body class="light">
 
-  <header class="topbar">
-    <div class="logo">🌐 Omeglix</div>
-    <div class="online-status"><span id="onlineCount">0+</span> online</div>
-    <div class="theme-toggle" id="themeToggle">🌙</div>
-  </header>
+  <div id="topbar">
+    <div id="logo">🌀 Omeglix</div>
+    <div id="controls">
+      <span id="onlineCount">0+ online</span>
+      <button id="themeToggle">🌙</button>
+    </div>
+  </div>
 
-  <div id="status" class="status">🔍 Searching for a stranger...</div>
+  <div id="status">Searching for a stranger...</div>
+  <div id="flagDisplay"></div>
 
-  <main id="chatbox" class="chatbox"></main>
+  <div id="chatbox" class="chat"></div>
 
-  <footer class="input-area">
-    <input id="input" type="text" placeholder="Type your message..." autocomplete="off" />
+  <div id="inputArea">
+    <input type="text" id="input" placeholder="Say something..." autocomplete="off" />
     <button id="sendBtn">Send</button>
-  </footer>
+  </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>

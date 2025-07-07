@@ -5,89 +5,77 @@ const sendBtn = document.getElementById("sendBtn");
 const chatbox = document.getElementById("chatbox");
 const status = document.getElementById("status");
 const onlineCount = document.getElementById("onlineCount");
+const flagDisplay = document.getElementById("flagDisplay");
+const themeToggle = document.getElementById("themeToggle");
 
-let myCountry = "Unknown";
-let myFlag = "🌍";
+let myCountry = "🌍";
+let myFlag = "🌐";
 
-// Get user location via IP
-fetch("https://ipinfo.io/json?token=8ac26849c86146") // Replace with your token if needed
+fetch("https://ipinfo.io/json?token=8ac26849c86146")
   .then(res => res.json())
   .then(data => {
-    myCountry = data.country || "Unknown";
-    myFlag = countryToFlagEmoji(myCountry);
-    findStranger();
-  }).catch(() => {
-    findStranger(); // Still try to connect even if IP lookup fails
+    myCountry = data.country;
+    myFlag = countryToFlagEmoji(data.country);
+    socket.emit("findPartner", { country: myCountry, flag: myFlag });
   });
 
-function countryToFlagEmoji(code) {
-  return code
-    .toUpperCase()
-    .replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt()));
+function countryToFlagEmoji(cc) {
+  return cc.toUpperCase().replace(/./g, char =>
+    String.fromCodePoint(127397 + char.charCodeAt())
+  );
 }
 
-function findStranger() {
-  status.innerText = "🔍 Searching for a stranger...";
-  socket.emit("findPartner", { country: myCountry, flag: myFlag });
-}
+sendBtn.onclick = sendMessage;
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") sendMessage();
+  else socket.emit("typing");
+});
+input.addEventListener("keyup", () => {
+  if (input.value.trim() === "") socket.emit("stopTyping");
+});
 
 function sendMessage() {
   const msg = input.value.trim();
   if (!msg) return;
   socket.emit("message", msg);
-  appendMessage("you", msg);
+  addMessage("you", msg);
   input.value = "";
   socket.emit("stopTyping");
 }
 
-function appendMessage(sender, text) {
-  const msgEl = document.createElement("div");
-  msgEl.classList.add("message", sender);
-  msgEl.innerText = `${sender === "you" ? "You" : "Stranger"}: ${text}`;
-  chatbox.appendChild(msgEl);
+function addMessage(sender, text) {
+  const div = document.createElement("div");
+  div.classList.add("message", sender);
+  div.innerText = `${sender === "you" ? "You" : "Stranger"}: ${text}`;
+  chatbox.appendChild(div);
   chatbox.scrollTop = chatbox.scrollHeight;
 }
 
-// Send on button click or Enter
-sendBtn.onclick = sendMessage;
-input.addEventListener("keydown", e => {
-  if (e.key === "Enter") sendMessage();
-  else socket.emit("typing");
-});
-
-input.addEventListener("keyup", e => {
-  if (input.value.trim() === "") socket.emit("stopTyping");
-});
-
-// Incoming events
+// Events
 socket.on("partnerFound", (userData) => {
-  status.innerText = `✅ Stranger connected from ${userData.flag} ${userData.country}`;
+  status.innerText = `Stranger connected from ${userData.flag} ${userData.country}`;
+  flagDisplay.innerText = `${userData.flag}`;
 });
 
 socket.on("partnerDisconnected", () => {
-  status.innerText = "⚠️ Stranger disconnected. Finding new one...";
+  status.innerText = "Stranger disconnected. Searching again...";
   chatbox.innerHTML = "";
-  findStranger();
+  socket.emit("findPartner", { country: myCountry, flag: myFlag });
 });
 
-socket.on("message", (msg) => appendMessage("stranger", msg));
-
-socket.on("typing", () => {
-  status.innerText = "✍️ Stranger is typing...";
-});
-
-socket.on("stopTyping", () => {
-  status.innerText = `✅ Stranger connected`;
-});
-
+socket.on("message", (msg) => addMessage("stranger", msg));
+socket.on("typing", () => status.innerText = "Stranger is typing...");
+socket.on("stopTyping", () => status.innerText = "Stranger connected.");
 socket.on("updateUserCount", (count) => {
-  onlineCount.innerText = `${count}+`;
+  onlineCount.innerText = `${count}+ online`;
 });
 
 // Theme toggle
-const themeToggle = document.getElementById("themeToggle");
-themeToggle.addEventListener("click", () => {
+themeToggle.onclick = () => {
   document.body.classList.toggle("dark");
-  themeToggle.innerText = document.body.classList.contains("dark") ? "☀️" : "🌙";
-});
-
+  if (document.body.classList.contains("dark")) {
+    themeToggle.innerText = "☀️";
+  } else {
+    themeToggle.innerText = "🌙";
+  }
+};
