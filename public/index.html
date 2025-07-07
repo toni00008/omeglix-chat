@@ -8,25 +8,30 @@
 </head>
 <body class="light">
 
-  <div id="topbar">
-    <div id="logo">🌀 Omeglix</div>
-    <div id="controls">
-      <span id="onlineCount">0+ online</span>
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">🌀 Omeglix</div>
+    <div class="right-controls">
+      <span id="online-count">0+ online</span>
       <button id="themeToggle">🌙</button>
     </div>
   </div>
 
-  <div id="status">Searching for a stranger...</div>
-  <div id="flagDisplay"></div>
+  <!-- Chat Section -->
+  <div class="chat-container">
+    <div id="status" class="system">Looking for a stranger...</div>
+    <div id="flagDisplay" class="system"></div>
 
-  <div id="chatbox" class="chat"></div>
+    <div id="chat-box"></div>
 
-  <div id="inputArea">
-    <input type="text" id="input" placeholder="Say something..." autocomplete="off" />
-    <button id="sendBtn">Send</button>
+    <div style="display: flex; gap: 10px; margin-top: auto;">
+      <input type="text" id="msg" placeholder="Say something..." />
+      <button id="send">Send</button>
+    </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
+
