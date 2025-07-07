@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Omeglix Video Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      color: white;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #video-container {
+      flex: 1;
+      display: flex;
+      flex-direction: row;
+      gap: 10px;
+      padding: 10px;
+    }
+    video {
+      flex: 1;
+      border-radius: 15px;
+      background: #000;
+      object-fit: cover;
+      height: 100%;
+    }
+    #controls {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px;
+      background: #222;
+    }
+    button {
+      background: #1db954;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #1aa34a;
+    }
+    #status {
+      font-size: 14px;
+      color: #ccc;
+    }
+    @media (max-width: 768px) {
+      #video-container {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="video-container">
+    <video id="localVideo" autoplay muted playsinline></video>
+    <video id="remoteVideo" autoplay playsinline></video>
+  </div>
+
+  <div id="controls">
+    <span id="status">Waiting for stranger...</span>
+    <div>
+      <button onclick="endCall()">End</button>
+      <button onclick="nextStranger()">Next</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="video.js"></script>
+</body>
+</html>
