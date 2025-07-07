@@ -3,37 +3,43 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Omeglix Chat</title>
+  <title>Omeglix - Stranger Chat</title>
   <link rel="stylesheet" href="style.css" />
-  <link rel="icon" href="https://emojiapi.dev/api/v1/globe_showing_americas/64.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 </head>
-<body class="light">
-  <!-- 🔥 Header -->
+<body>
+  <!-- Top Bar -->
   <div class="header">
-    <div class="logo">🌐 Omeglix</div>
+    <img src="logo.png" alt="Omeglix Logo" class="logo" />
     <div class="right-controls">
-      <div id="online-count">0+ online</div>
-      <button id="themeToggle">🌙</button>
+      <span id="online-count">👥 0+</span>
+      <button id="toggle-theme">🌙</button>
     </div>
   </div>
 
-  <!-- 💬 Main Chat Container -->
+  <!-- Main Chat Box -->
   <div class="chat-container">
-    <div id="status">Looking for a stranger...</div>
-    <div id="flagDisplay"></div>
+    <div id="status">Connecting to a stranger...</div>
     <div id="chat-box"></div>
 
-    <!-- 💡 Input & Buttons -->
-    <div style="display: flex; gap: 10px; margin-top: auto;">
-      <input type="text" id="msg" placeholder="Type something..." autocomplete="off" />
-      <button id="send">Send</button>
-      <button id="next">Next</button>
-    </div>
+    <input type="text" id="msg" placeholder="Type a message..." autocomplete="off" />
+    <button id="send">Send</button>
+    <button id="next">Next Stranger</button>
   </div>
 
-  <!-- 📦 Scripts -->
+  <!-- Scripts -->
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
+  <script>
+    // Theme Toggle
+    const toggleBtn = document.getElementById('toggle-theme');
+    toggleBtn.addEventListener('click', () => {
+      document.body.classList.toggle('light');
+      toggleBtn.innerText = document.body.classList.contains('light') ? '🌙' : '☀️';
+    });
+  </script>
 </body>
+</html>
+
 </html>
 

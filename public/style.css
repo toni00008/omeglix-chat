@@ -38,6 +38,7 @@ body {
   transition: 0.3s ease;
 }
 
+/* Header Bar */
 .header {
   width: 100%;
   height: 60px;
@@ -54,8 +55,8 @@ body {
 }
 
 .logo {
-  font-size: 20px;
-  font-weight: bold;
+  height: 36px;
+  object-fit: contain;
 }
 
 .right-controls {
@@ -69,6 +70,7 @@ body {
   color: var(--system);
 }
 
+/* Main Chat UI */
 .chat-container {
   position: absolute;
   top: 60px;
@@ -82,7 +84,7 @@ body {
   gap: 10px;
 }
 
-#status, #flagDisplay {
+#status {
   text-align: center;
   font-size: 14px;
   font-weight: 500;
@@ -158,6 +160,10 @@ button {
   background: var(--send);
 }
 
+#next {
+  background: var(--next);
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -176,3 +182,4 @@ button {
   background: #777;
   border-radius: 5px;
 }
+

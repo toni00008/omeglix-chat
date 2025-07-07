@@ -1,79 +1,117 @@
-const express = require("express");
+const express = require('express');
+const axios = require('axios');
 const app = express();
-const http = require("http").createServer(app);
-const io = require("socket.io")(http);
-const path = require("path");
+const http = require('http').createServer(app);
+const io = require('socket.io')(http);
+const PORT = 3000;
 
-const PORT = process.env.PORT || 3000;
+app.use(express.static('public'));
 
-app.use(express.static(path.join(__dirname, "public")));
+let users = new Set();
+let waitingUser = null;
 
-let waitingUsers = [];
-let allUsers = new Set();
+function updateOnlineCount() {
+  io.emit('onlineCount', users.size);
+}
 
-io.on("connection", (socket) => {
-  allUsers.add(socket);
-  io.emit("updateUserCount", allUsers.size);
+// Helper to get country from IP
+async function getCountryFromIP(ip) {
+  try {
+    const response = await axios.get(`http://ip-api.com/json/${ip}`);
+    return {
+      country: response.data.country || 'Unknown',
+      code: response.data.countryCode || ''
+    };
+  } catch (err) {
+    return { country: 'Unknown', code: '' };
+  }
+}
 
-  socket.on("findPartner", (data) => {
-    socket.country = data.country || "🌍";
-    socket.flag = data.flag || "🌐";
-    waitingUsers.push(socket);
-    matchUsers();
-  });
+io.on('connection', async (socket) => {
+  const ip = socket.handshake.headers['x-forwarded-for']?.split(',')[0] || socket.conn.remoteAddress;
+  const location = await getCountryFromIP(ip);
 
-  socket.on("disconnectPartner", () => {
+  socket.country = location.country;
+  socket.countryCode = location.code;
+
+  users.add(socket.id);
+  updateOnlineCount();
+
+  if (waitingUser) {
+    const partner = waitingUser;
+    waitingUser = null;
+    socket.partner = partner;
+    partner.partner = socket;
+
+    // Send country info to each other
+    socket.emit('partner-found', {
+      country: partner.country,
+      code: partner.countryCode
+    });
+
+    partner.emit('partner-found', {
+      country: socket.country,
+      code: socket.countryCode
+    });
+  } else {
+    waitingUser = socket;
+  }
+
+  socket.on('message', msg => {
     if (socket.partner) {
-      socket.partner.emit("partnerDisconnected");
-      socket.partner.partner = null;
-      socket.partner = null;
+      socket.partner.emit('message', msg);
     }
   });
 
-  socket.on("message", (msg) => {
+  socket.on('typing', () => {
     if (socket.partner) {
-      socket.partner.emit("message", msg);
+      socket.partner.emit('typing');
     }
   });
 
-  socket.on("typing", () => {
-    if (socket.partner) socket.partner.emit("typing");
-  });
-
-  socket.on("stopTyping", () => {
-    if (socket.partner) socket.partner.emit("stopTyping");
-  });
-
-  socket.on("disconnect", () => {
-    allUsers.delete(socket);
-    io.emit("updateUserCount", allUsers.size);
-    waitingUsers = waitingUsers.filter((s) => s !== socket);
+  socket.on('next', () => {
     if (socket.partner) {
-      socket.partner.emit("partnerDisconnected");
       socket.partner.partner = null;
+      socket.partner.emit('partner-disconnected');
+    }
+
+    socket.partner = null;
+
+    if (!waitingUser || waitingUser === socket) {
+      waitingUser = socket;
+    } else {
+      const partner = waitingUser;
+      waitingUser = null;
+
+      socket.partner = partner;
+      partner.partner = socket;
+
+      socket.emit('partner-found', {
+        country: partner.country,
+        code: partner.countryCode
+      });
+
+      partner.emit('partner-found', {
+        country: socket.country,
+        code: socket.countryCode
+      });
+    }
+  });
+
+  socket.on('disconnect', () => {
+    users.delete(socket.id);
+    updateOnlineCount();
+
+    if (waitingUser === socket) {
+      waitingUser = null;
+    }
+
+    if (socket.partner) {
+      socket.partner.partner = null;
+      socket.partner.emit('partner-disconnected');
     }
   });
 });
-
-function matchUsers() {
-  while (waitingUsers.length >= 2) {
-    const user1 = waitingUsers.shift();
-    const user2 = waitingUsers.shift();
-
-    user1.partner = user2;
-    user2.partner = user1;
-
-    user1.emit("partnerFound", {
-      country: user2.country,
-      flag: user2.flag,
-    });
-
-    user2.emit("partnerFound", {
-      country: user1.country,
-      flag: user1.flag,
-    });
-  }
-}
 
 http.listen(PORT, () => {
   console.log(`✅ Server running at http://localhost:${PORT}`);
