@@ -1,118 +1,77 @@
-const express = require('express');
-const axios = require('axios');
+const express = require("express");
 const app = express();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http);
-const PORT = 3000;
+const http = require("http").createServer(app);
+const io = require("socket.io")(http);
+const path = require("path");
 
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, "public")));
 
-let users = new Set();
-let waitingUser = null;
+app.get("/", (req, res) => {
+  res.sendFile(__dirname + "/public/index.html");
+});
 
-function updateOnlineCount() {
-  io.emit('onlineCount', users.size);
-}
+app.get("/video", (req, res) => {
+  res.sendFile(__dirname + "/public/video.html");
+});
 
-// Helper to get country from IP
-async function getCountryFromIP(ip) {
-  try {
-    const response = await axios.get(`http://ip-api.com/json/${ip}`);
-    return {
-      country: response.data.country || 'Unknown',
-      code: response.data.countryCode || ''
-    };
-  } catch (err) {
-    return { country: 'Unknown', code: '' };
-  }
-}
+let waiting = null;
 
-io.on('connection', async (socket) => {
-  const ip = socket.handshake.headers['x-forwarded-for']?.split(',')[0] || socket.conn.remoteAddress;
-  const location = await getCountryFromIP(ip);
+io.on("connection", (socket) => {
+  console.log(`User connected: ${socket.id}`);
 
-  socket.country = location.country;
-  socket.countryCode = location.code;
+  socket.on("readyForCall", () => {
+    if (waiting) {
+      // Pair with waiting user
+      socket.partner = waiting;
+      waiting.partner = socket;
 
-  users.add(socket.id);
-  updateOnlineCount();
-
-  if (waitingUser) {
-    const partner = waitingUser;
-    waitingUser = null;
-    socket.partner = partner;
-    partner.partner = socket;
-
-    // Send country info to each other
-    socket.emit('partner-found', {
-      country: partner.country,
-      code: partner.countryCode
-    });
-
-    partner.emit('partner-found', {
-      country: socket.country,
-      code: socket.countryCode
-    });
-  } else {
-    waitingUser = socket;
-  }
-
-  socket.on('message', msg => {
-    if (socket.partner) {
-      socket.partner.emit('message', msg);
-    }
-  });
-
-  socket.on('typing', () => {
-    if (socket.partner) {
-      socket.partner.emit('typing');
-    }
-  });
-
-  socket.on('next', () => {
-    if (socket.partner) {
-      socket.partner.partner = null;
-      socket.partner.emit('partner-disconnected');
-    }
-
-    socket.partner = null;
-
-    if (!waitingUser || waitingUser === socket) {
-      waitingUser = socket;
+      socket.emit("offer", waiting.offer);
+      waiting = null;
     } else {
-      const partner = waitingUser;
-      waitingUser = null;
+      // Wait for partner
+      waiting = socket;
 
-      socket.partner = partner;
-      partner.partner = socket;
-
-      socket.emit('partner-found', {
-        country: partner.country,
-        code: partner.countryCode
-      });
-
-      partner.emit('partner-found', {
-        country: socket.country,
-        code: socket.countryCode
+      // Prepare to send offer later
+      socket.on("offer", (offer) => {
+        socket.offer = offer;
       });
     }
   });
 
-  socket.on('disconnect', () => {
-    users.delete(socket.id);
-    updateOnlineCount();
-
-    if (waitingUser === socket) {
-      waitingUser = null;
-    }
-
+  socket.on("answer", (answer) => {
     if (socket.partner) {
-      socket.partner.partner = null;
-      socket.partner.emit('partner-disconnected');
+      socket.partner.emit("answer", answer);
     }
+  });
+
+  socket.on("ice-candidate", (candidate) => {
+    if (socket.partner) {
+      socket.partner.emit("ice-candidate", candidate);
+    }
+  });
+
+  socket.on("end", () => {
+    if (socket.partner) {
+      socket.partner.emit("stranger-disconnected");
+      socket.partner.partner = null;
+    }
+    socket.partner = null;
+  });
+
+  socket.on("disconnect", () => {
+    if (waiting === socket) {
+      waiting = null;
+    }
+    if (socket.partner) {
+      socket.partner.emit("stranger-disconnected");
+      socket.partner.partner = null;
+    }
+    console.log(`User disconnected: ${socket.id}`);
   });
 });
 
+const PORT = process.env.PORT || 3000;
 http.listen(PORT, () => {
-  console.log(`✅ Server running at http://localhost:${PORT}`);
+  console.log(`✅ Server running on http://localhost:${PORT}`);
 });
+
