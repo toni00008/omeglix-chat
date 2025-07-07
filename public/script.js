@@ -1,114 +1,93 @@
 const socket = io();
 
+// Elements
+const chatBox = document.getElementById("chatBox");
+const messageInput = document.getElementById("messageInput");
+const sendBtn = document.getElementById("sendBtn");
+const typingIndicator = document.getElementById("typingIndicator");
+const nextBtn = document.getElementById("nextBtn");
+const onlineCount = document.getElementById("onlineCount");
+
 let isTyping = false;
-let typingTimeout;
 
-const chatBox = document.getElementById('chat-box');
-const status = document.getElementById('status');
-const msgInput = document.getElementById('msg');
-const sendBtn = document.getElementById('send');
-const nextBtn = document.getElementById('next');
-const onlineCount = document.getElementById('online-count');
+// Request to find a partner
+socket.emit("findPartner");
 
-// Add messages to chat
-function addMessage(type, text) {
-  const msg = document.createElement('div');
-  msg.className = type;
-  msg.innerText = `${type === 'you' ? 'You' : type === 'stranger' ? 'Stranger' : ''}${type !== 'system' ? ': ' : ''}${text}`;
-  chatBox.appendChild(msg);
-  chatBox.scrollTop = chatBox.scrollHeight;
-}
-
-// Show connection status
-function setStatus(html) {
-  status.innerHTML = `🍌 <strong>${html}</strong>`;
-}
-
-// Show typing
-function showTyping() {
-  if (!document.getElementById('typing-indicator')) {
-    const typing = document.createElement('div');
-    typing.id = 'typing-indicator';
-    typing.className = 'system';
-    typing.innerText = 'Stranger is typing...';
-    chatBox.appendChild(typing);
-    chatBox.scrollTop = chatBox.scrollHeight;
-  }
-}
-
-// Hide typing
-function hideTyping() {
-  const typing = document.getElementById('typing-indicator');
-  if (typing) typing.remove();
-}
-
-// Send message
-sendBtn.onclick = () => {
-  const msg = msgInput.value.trim();
-  if (msg === '') return;
-
-  addMessage('you', msg);
-  socket.emit('message', msg);
-  msgInput.value = '';
-  hideTyping();
-};
-
-// Press Enter to send
-msgInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    sendBtn.click();
-  } else {
-    if (!isTyping) {
-      socket.emit('typing');
-      isTyping = true;
-      typingTimeout = setTimeout(() => {
-        isTyping = false;
-      }, 3000);
-    }
-  }
-});
-
-// Next button
-nextBtn.onclick = () => {
-  chatBox.innerHTML = '';
-  msgInput.value = '';
-  setStatus('Searching for a new stranger...');
-  socket.emit('next');
-};
-
-// ✅ Handle partner found with country & flag
-socket.on('partner-found', ({ country, code }) => {
-  const flagURL = code ? `https://flagcdn.com/24x18/${code.toLowerCase()}.png` : '';
-  const countryLabel = country ? ` (${country})` : '';
-  const flagImg = flagURL ? `<img src="${flagURL}" alt="${code}" style="margin-left:6px;vertical-align:middle;" />` : '';
-  setStatus(`Stranger connected!${countryLabel}${flagImg}`);
+// Partner found
+socket.on("partnerFound", () => {
+  appendMessage("🔗 Stranger connected!", "system");
+  typingIndicator.innerText = "";
 });
 
 // Stranger disconnected
-socket.on('partner-disconnected', () => {
-  addMessage('system', 'Stranger disconnected.');
-  setStatus('Searching for a new stranger...');
+socket.on("partnerDisconnected", () => {
+  appendMessage("🚫 Stranger disconnected.", "system");
+  typingIndicator.innerText = "";
 });
 
-// Receive message
-socket.on('message', msg => {
-  hideTyping();
-  addMessage('stranger', msg);
+// New message
+socket.on("message", (msg) => {
+  appendMessage(`Stranger: ${msg}`, "stranger");
 });
 
-// Typing signal
-socket.on('typing', () => {
-  showTyping();
-  clearTimeout(typingTimeout);
-  typingTimeout = setTimeout(() => {
-    hideTyping();
-  }, 3000);
+// Typing indicators
+socket.on("typing", () => {
+  typingIndicator.innerText = "Stranger is typing...";
 });
 
-// ✅ Online users update
-socket.on('onlineCount', (count) => {
-  console.log("🟡 Online users:", count);
+socket.on("stopTyping", () => {
+  typingIndicator.innerText = "";
+});
+
+// Send message
+sendBtn.addEventListener("click", sendMessage);
+messageInput.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") {
+    sendMessage();
+  } else {
+    if (!isTyping) {
+      isTyping = true;
+      socket.emit("typing");
+    }
+
+    clearTimeout(window.typingTimeout);
+    window.typingTimeout = setTimeout(() => {
+      isTyping = false;
+      socket.emit("stopTyping");
+    }, 1000);
+  }
+});
+
+function sendMessage() {
+  const msg = messageInput.value.trim();
+  if (!msg) return;
+
+  appendMessage(`You: ${msg}`, "you");
+  socket.emit("message", msg);
+  messageInput.value = "";
+  socket.emit("stopTyping");
+  isTyping = false;
+}
+
+// Next button
+nextBtn.addEventListener("click", () => {
+  chatBox.innerHTML = "";
+  socket.emit("next");
+  appendMessage("🔍 Looking for a new stranger...", "system");
+});
+
+// Append message to chat
+function appendMessage(msg, type) {
+  const msgDiv = document.createElement("div");
+  msgDiv.classList.add("message", type);
+  msgDiv.innerText = msg;
+  chatBox.appendChild(msgDiv);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// Show online user count
+socket.on("userCount", (count) => {
   if (onlineCount) {
-    onlineCount.innerText = `👥 ${count}+`;
+    onlineCount.innerText = `${count}+ Online`;
   }
 });

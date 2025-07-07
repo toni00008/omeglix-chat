@@ -5,10 +5,8 @@ const { Server } = require("socket.io");
 const io = new Server(http);
 const path = require("path");
 
-// Serve static files
 app.use(express.static(path.join(__dirname, "public")));
 
-// Routes
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/public/index.html");
 });
@@ -17,12 +15,18 @@ app.get("/video", (req, res) => {
   res.sendFile(__dirname + "/public/video.html");
 });
 
-// ---------- TEXT CHAT ----------
+// Track active users
+let onlineUsers = 0;
+
+// ========== TEXT CHAT ==========
 let textQueue = [];
 
 io.on("connection", (socket) => {
-  console.log("[TEXT] User connected: " + socket.id);
+  console.log("[TEXT] User connected:", socket.id);
+  onlineUsers++;
+  io.emit("userCount", onlineUsers);
 
+  // Matchmaking
   if (textQueue.length > 0) {
     const partner = textQueue.shift();
     socket.partner = partner;
@@ -54,32 +58,39 @@ io.on("connection", (socket) => {
       socket.partner.partner = null;
     }
     socket.partner = null;
-    textQueue.push(socket);
+
+    // Add self back to queue
+    if (!textQueue.includes(socket)) {
+      textQueue.push(socket);
+    }
   });
 
   socket.on("disconnect", () => {
+    console.log("[TEXT] Disconnected:", socket.id);
+    onlineUsers--;
+    io.emit("userCount", onlineUsers);
+
     if (socket.partner) {
       socket.partner.emit("partnerDisconnected");
       socket.partner.partner = null;
     } else {
       textQueue = textQueue.filter(s => s !== socket);
     }
-    console.log("[TEXT] User disconnected: " + socket.id);
   });
 });
 
-// ---------- VIDEO CHAT ----------
+// ========== VIDEO CHAT ==========
 let videoQueue = [];
 
 io.of("/video").on("connection", (socket) => {
-  console.log("[VIDEO] Connected: " + socket.id);
+  console.log("[VIDEO] Connected:", socket.id);
 
   if (videoQueue.length > 0) {
     const partner = videoQueue.shift();
     socket.partner = partner;
     partner.partner = socket;
 
-    partner.emit("offer", partner.offer); // send offer to new user
+    partner.emit("offer", partner.offer);
   } else {
     videoQueue.push(socket);
   }
@@ -89,15 +100,11 @@ io.of("/video").on("connection", (socket) => {
   });
 
   socket.on("answer", (answer) => {
-    if (socket.partner) {
-      socket.partner.emit("answer", answer);
-    }
+    if (socket.partner) socket.partner.emit("answer", answer);
   });
 
   socket.on("ice-candidate", (candidate) => {
-    if (socket.partner) {
-      socket.partner.emit("ice-candidate", candidate);
-    }
+    if (socket.partner) socket.partner.emit("ice-candidate", candidate);
   });
 
   socket.on("end", () => {
@@ -115,12 +122,11 @@ io.of("/video").on("connection", (socket) => {
     } else {
       videoQueue = videoQueue.filter(s => s !== socket);
     }
-    console.log("[VIDEO] Disconnected: " + socket.id);
   });
 });
 
 const PORT = process.env.PORT || 3000;
 http.listen(PORT, () => {
-  console.log(`✅ Server running at http://localhost:${PORT}`);
+  console.log(`✅ Server running on http://localhost:${PORT}`);
 });
 

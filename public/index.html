@@ -2,41 +2,40 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Omeglix - Stranger Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Omeglix - Text Chat</title>
   <link rel="stylesheet" href="style.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- Top Bar -->
-  <div class="header">
-    <img src="logo.png" alt="Omeglix Logo" class="logo" />
-    <div class="right-controls">
-      <span id="online-count">👥 0+</span>
-      <button id="toggle-theme">🌙</button>
+
+  <header class="header">
+    <img src="/logo.png" alt="Omeglix" class="logo" />
+    <div class="right-panel">
+      <span id="onlineCount">0+ Online</span>
+      <button id="toggleMode">🌙</button>
     </div>
-  </div>
+  </header>
 
-  <!-- Main Chat Box -->
-  <div class="chat-container">
-    <div id="status">Connecting to a stranger...</div>
-    <div id="chat-box"></div>
+  <main class="chat-container">
+    <div id="chatBox" class="chat-box"></div>
+    <div id="typingIndicator" class="typing-indicator"></div>
 
-    <input type="text" id="msg" placeholder="Type a message..." autocomplete="off" />
-    <button id="send">Send</button>
-    <button id="next">Next Stranger</button>
-  </div>
+    <div class="input-area">
+      <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off" />
+      <button id="sendBtn">Send</button>
+    </div>
 
-  <!-- Scripts -->
+    <div class="controls">
+      <button id="nextBtn">🔁 Next Stranger</button>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p>💬 Omeglix - Random Stranger Chat</p>
+  </footer>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
-  <script>
-    // Theme Toggle
-    const toggleBtn = document.getElementById('toggle-theme');
-    toggleBtn.addEventListener('click', () => {
-      document.body.classList.toggle('light');
-      toggleBtn.innerText = document.body.classList.contains('light') ? '🌙' : '☀️';
-    });
-  </script>
 </body>
 </html>
+
