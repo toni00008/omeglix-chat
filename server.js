@@ -1,11 +1,14 @@
 const express = require("express");
 const app = express();
 const http = require("http").createServer(app);
-const io = require("socket.io")(http);
+const { Server } = require("socket.io");
+const io = new Server(http);
 const path = require("path");
 
+// Serve static files
 app.use(express.static(path.join(__dirname, "public")));
 
+// Routes
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/public/index.html");
 });
@@ -14,24 +17,22 @@ app.get("/video", (req, res) => {
   res.sendFile(__dirname + "/public/video.html");
 });
 
-// ========== TEXT CHAT ==========
+// ---------- TEXT CHAT ----------
 let textQueue = [];
 
-io.of("/").on("connection", (socket) => {
-  console.log(`[TEXT] User connected: ${socket.id}`);
+io.on("connection", (socket) => {
+  console.log("[TEXT] User connected: " + socket.id);
 
-  socket.on("findPartner", () => {
-    if (textQueue.length > 0) {
-      const partner = textQueue.shift();
-      socket.partner = partner;
-      partner.partner = socket;
+  if (textQueue.length > 0) {
+    const partner = textQueue.shift();
+    socket.partner = partner;
+    partner.partner = socket;
 
-      socket.emit("partnerFound");
-      partner.emit("partnerFound");
-    } else {
-      textQueue.push(socket);
-    }
-  });
+    socket.emit("partnerFound");
+    partner.emit("partnerFound");
+  } else {
+    textQueue.push(socket);
+  }
 
   socket.on("message", (msg) => {
     if (socket.partner) {
@@ -40,58 +41,51 @@ io.of("/").on("connection", (socket) => {
   });
 
   socket.on("typing", () => {
-    if (socket.partner) {
-      socket.partner.emit("typing");
-    }
+    if (socket.partner) socket.partner.emit("typing");
   });
 
   socket.on("stopTyping", () => {
-    if (socket.partner) {
-      socket.partner.emit("stopTyping");
-    }
-  });
-
-  socket.on("disconnect", () => {
-    console.log(`[TEXT] Disconnected: ${socket.id}`);
-    if (socket.partner) {
-      socket.partner.emit("partnerDisconnected");
-      socket.partner.partner = null;
-    } else {
-      textQueue = textQueue.filter(s => s.id !== socket.id);
-    }
+    if (socket.partner) socket.partner.emit("stopTyping");
   });
 
   socket.on("next", () => {
     if (socket.partner) {
       socket.partner.emit("partnerDisconnected");
       socket.partner.partner = null;
-      socket.partner = null;
     }
-    socket.emit("findPartner");
+    socket.partner = null;
+    textQueue.push(socket);
+  });
+
+  socket.on("disconnect", () => {
+    if (socket.partner) {
+      socket.partner.emit("partnerDisconnected");
+      socket.partner.partner = null;
+    } else {
+      textQueue = textQueue.filter(s => s !== socket);
+    }
+    console.log("[TEXT] User disconnected: " + socket.id);
   });
 });
 
-// ========== VIDEO CHAT ==========
-let videoWaiting = null;
+// ---------- VIDEO CHAT ----------
+let videoQueue = [];
 
 io.of("/video").on("connection", (socket) => {
-  console.log(`[VIDEO] Connected: ${socket.id}`);
+  console.log("[VIDEO] Connected: " + socket.id);
 
-  socket.on("readyForCall", () => {
-    if (videoWaiting) {
-      socket.partner = videoWaiting;
-      videoWaiting.partner = socket;
+  if (videoQueue.length > 0) {
+    const partner = videoQueue.shift();
+    socket.partner = partner;
+    partner.partner = socket;
 
-      // Send offer from waiting user to new user
-      socket.emit("offer", videoWaiting.offer);
-      videoWaiting = null;
-    } else {
-      videoWaiting = socket;
+    partner.emit("offer", partner.offer); // send offer to new user
+  } else {
+    videoQueue.push(socket);
+  }
 
-      socket.on("offer", (offer) => {
-        socket.offer = offer;
-      });
-    }
+  socket.on("offer", (offer) => {
+    socket.offer = offer;
   });
 
   socket.on("answer", (answer) => {
@@ -115,19 +109,18 @@ io.of("/video").on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    if (videoWaiting === socket) {
-      videoWaiting = null;
-    }
     if (socket.partner) {
       socket.partner.emit("stranger-disconnected");
       socket.partner.partner = null;
+    } else {
+      videoQueue = videoQueue.filter(s => s !== socket);
     }
-    console.log(`[VIDEO] Disconnected: ${socket.id}`);
+    console.log("[VIDEO] Disconnected: " + socket.id);
   });
 });
 
 const PORT = process.env.PORT || 3000;
 http.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
+  console.log(`✅ Server running at http://localhost:${PORT}`);
 });
 
