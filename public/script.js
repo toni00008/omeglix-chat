@@ -10,21 +10,43 @@ const themeToggle = document.getElementById("themeToggle");
 
 let myCountry = "🌍";
 let myFlag = "🌐";
+let myFullCountry = "Unknown";
 
+// Convert 2-letter code to flag emoji
 function countryToFlagEmoji(cc) {
   return cc.toUpperCase().replace(/./g, char =>
     String.fromCodePoint(127397 + char.charCodeAt())
   );
 }
 
+// Detect user country
 fetch("https://ipinfo.io/json?token=8ac26849c86146")
   .then(res => res.json())
   .then(data => {
-    myCountry = data.country || "🌍";
-    myFlag = countryToFlagEmoji(myCountry);
-    socket.emit("findPartner", { country: myCountry, flag: myFlag });
+    const countryCode = data.country || "🌍";
+    myFlag = countryToFlagEmoji(countryCode);
+
+    // Get full country name
+    fetch(`https://restcountries.com/v3.1/alpha/${countryCode}`)
+      .then(res => res.json())
+      .then(result => {
+        const name = result[0]?.name?.common || countryCode;
+        myFullCountry = name;
+
+        socket.emit("findPartner", {
+          country: myFullCountry,
+          flag: myFlag
+        });
+      })
+      .catch(() => {
+        socket.emit("findPartner", {
+          country: countryCode,
+          flag: myFlag
+        });
+      });
   });
 
+// Append message to chat box
 function appendMessage(type, msg) {
   const div = document.createElement("div");
   div.className = type;
@@ -33,6 +55,7 @@ function appendMessage(type, msg) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
+// Send message
 function sendMessage() {
   const msg = input.value.trim();
   if (!msg) return;
@@ -43,31 +66,51 @@ function sendMessage() {
 }
 
 sendBtn.onclick = sendMessage;
+
+// Enter key to send
 input.addEventListener("keydown", (e) => {
   if (e.key === "Enter") sendMessage();
   else socket.emit("typing");
 });
+
 input.addEventListener("keyup", () => {
   if (input.value.trim() === "") socket.emit("stopTyping");
 });
 
+// Listen for partner found
 socket.on("partnerFound", (userData) => {
-  status.textContent = `Stranger connected from ${userData.flag} ${userData.country}`;
+  status.textContent = `Stranger connected from ${userData.country} ${userData.flag}`;
   flagDisplay.textContent = `${userData.flag}`;
 });
 
-socket.on("partnerDisconnected", () => {
-  appendMessage("system", "Stranger disconnected. Searching for a new one...");
-  socket.emit("findPartner", { country: myCountry, flag: myFlag });
+// Listen for messages
+socket.on("message", (msg) => {
+  appendMessage("stranger", `Stranger: ${msg}`);
 });
 
-socket.on("message", (msg) => appendMessage("stranger", `Stranger: ${msg}`));
-socket.on("typing", () => status.textContent = "Stranger is typing...");
-socket.on("stopTyping", () => status.textContent = "Stranger connected.");
+// Typing
+socket.on("typing", () => {
+  status.textContent = "Stranger is typing...";
+});
+socket.on("stopTyping", () => {
+  status.textContent = "Stranger connected.";
+});
+
+// Reconnect
+socket.on("partnerDisconnected", () => {
+  appendMessage("system", "Stranger disconnected. Searching for a new one...");
+  socket.emit("findPartner", {
+    country: myFullCountry,
+    flag: myFlag
+  });
+});
+
+// Online users count
 socket.on("updateUserCount", (count) => {
   onlineCount.textContent = `${count}+ online`;
 });
 
+// Theme toggle
 themeToggle.onclick = () => {
   document.body.classList.toggle("light");
   themeToggle.textContent = document.body.classList.contains("light") ? "🌙" : "☀️";
