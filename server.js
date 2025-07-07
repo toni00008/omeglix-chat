@@ -22,6 +22,14 @@ io.on("connection", (socket) => {
     matchUsers();
   });
 
+  socket.on("disconnectPartner", () => {
+    if (socket.partner) {
+      socket.partner.emit("partnerDisconnected");
+      socket.partner.partner = null;
+      socket.partner = null;
+    }
+  });
+
   socket.on("message", (msg) => {
     if (socket.partner) {
       socket.partner.emit("message", msg);
@@ -70,3 +78,4 @@ function matchUsers() {
 http.listen(PORT, () => {
   console.log(`✅ Server running at http://localhost:${PORT}`);
 });
+
