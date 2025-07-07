@@ -13,8 +13,6 @@ let allUsers = new Set();
 
 io.on("connection", (socket) => {
   allUsers.add(socket);
-
-  // Update online users
   io.emit("updateUserCount", allUsers.size);
 
   socket.on("findPartner", (data) => {
@@ -31,25 +29,17 @@ io.on("connection", (socket) => {
   });
 
   socket.on("typing", () => {
-    if (socket.partner) {
-      socket.partner.emit("typing");
-    }
+    if (socket.partner) socket.partner.emit("typing");
   });
 
   socket.on("stopTyping", () => {
-    if (socket.partner) {
-      socket.partner.emit("stopTyping");
-    }
+    if (socket.partner) socket.partner.emit("stopTyping");
   });
 
   socket.on("disconnect", () => {
     allUsers.delete(socket);
     io.emit("updateUserCount", allUsers.size);
-
-    // Remove from waiting
     waitingUsers = waitingUsers.filter((s) => s !== socket);
-
-    // Disconnect partner
     if (socket.partner) {
       socket.partner.emit("partnerDisconnected");
       socket.partner.partner = null;
@@ -78,5 +68,5 @@ function matchUsers() {
 }
 
 http.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`✅ Server running at http://localhost:${PORT}`);
 });

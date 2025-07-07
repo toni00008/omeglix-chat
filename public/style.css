@@ -1,116 +1,178 @@
-body {
+:root {
+  --bg: #111;
+  --card: #222;
+  --text: #f2f2f2;
+  --you: #5bff9f;
+  --stranger: #ff5b9f;
+  --input: #333;
+  --system: #aaa;
+  --send: linear-gradient(to right, #5bff9f, #3effe0);
+  --next: linear-gradient(to right, #ff8f70, #ff5b9f);
+}
+
+body.light {
+  --bg: #f9f9f9;
+  --card: #fff;
+  --text: #111;
+  --you: #3ecf8e;
+  --stranger: #d81b60;
+  --input: #eee;
+  --system: #777;
+  --send: linear-gradient(to right, #3ecf8e, #26c6da);
+  --next: linear-gradient(to right, #ff8a65, #f06292);
+}
+
+* {
+  box-sizing: border-box;
   margin: 0;
-  font-family: "Poppins", sans-serif;
-  background: #fff;
-  color: #111;
-  display: flex;
-  flex-direction: column;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
   height: 100vh;
-  transition: background 0.3s, color 0.3s;
+  width: 100vw;
+  overflow: hidden;
+  transition: 0.3s ease;
 }
 
-body.dark {
-  background: #121212;
-  color: #eee;
-}
-
-#topbar {
-  padding: 12px 16px;
-  background: #f1f1f1;
+.header {
+  width: 100%;
+  height: 60px;
+  background-color: var(--card);
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 10;
+}
+
+.logo {
+  font-size: 20px;
   font-weight: bold;
-  font-size: 16px;
-  border-bottom: 1px solid #ccc;
 }
 
-body.dark #topbar {
-  background: #1f1f1f;
-  border-bottom: 1px solid #333;
-}
-
-#controls {
+.right-controls {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-#status {
-  text-align: center;
-  font-size: 14px;
-  padding: 8px;
-  color: #666;
+#online-count {
+  font-size: 16px;
+  color: var(--system);
 }
 
-#flagDisplay {
-  text-align: center;
-  font-size: 24px;
-  padding-bottom: 4px;
-}
-
-#chatbox {
-  flex: 1;
-  overflow-y: auto;
+.chat-container {
+  position: absolute;
+  top: 60px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: var(--card);
   display: flex;
   flex-direction: column;
-  padding: 12px;
+  padding: 16px;
   gap: 10px;
 }
 
-.message {
-  max-width: 70%;
-  padding: 10px 14px;
-  border-radius: 18px;
-  font-size: 15px;
-  word-wrap: break-word;
+#status, #flagDisplay {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--system);
+}
+
+#chat-box {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--input);
+  padding: 12px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  scroll-behavior: smooth;
 }
 
 .you {
-  background: #1db954;
-  color: white;
   align-self: flex-end;
-  border-bottom-right-radius: 4px;
+  background: var(--you);
+  color: #000;
+  padding: 10px 14px;
+  border-radius: 16px 16px 2px 16px;
+  max-width: 75%;
+  word-wrap: break-word;
+  animation: fadeIn 0.2s ease;
 }
 
 .stranger {
-  background: #eee;
-  color: #000;
   align-self: flex-start;
-  border-bottom-left-radius: 4px;
-}
-
-body.dark .stranger {
-  background: #333;
+  background: var(--stranger);
   color: #fff;
-}
-
-#inputArea {
-  display: flex;
-  padding: 10px;
-  border-top: 1px solid #ddd;
-}
-
-#input {
-  flex: 1;
   padding: 10px 14px;
-  border: 1px solid #ccc;
-  border-radius: 20px;
-  outline: none;
-  font-size: 15px;
+  border-radius: 16px 16px 16px 2px;
+  max-width: 75%;
+  word-wrap: break-word;
+  animation: fadeIn 0.2s ease;
 }
 
-#sendBtn {
-  margin-left: 10px;
-  background: #1db954;
-  color: white;
+.system {
+  text-align: center;
+  font-style: italic;
+  font-size: 13px;
+  color: var(--system);
+  animation: fadeIn 0.3s ease;
+}
+
+#msg {
+  padding: 16px;
   border: none;
-  border-radius: 20px;
-  padding: 10px 16px;
-  cursor: pointer;
+  border-radius: 10px;
+  background-color: var(--input);
+  color: var(--text);
+  font-size: 16px;
+  width: 100%;
+  outline: none;
 }
 
 button {
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: bold;
   cursor: pointer;
+  transition: 0.2s ease;
+  color: white;
+  width: 100%;
 }
 
+#send {
+  background: var(--send);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+#chat-box::-webkit-scrollbar {
+  width: 6px;
+}
+#chat-box::-webkit-scrollbar-thumb {
+  background: #777;
+  border-radius: 5px;
+}

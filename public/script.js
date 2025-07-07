@@ -1,172 +1,74 @@
-:root {
-  --bg: #111;
-  --card: #222;
-  --text: #f2f2f2;
-  --you: #5bff9f;
-  --stranger: #ff5b9f;
-  --input: #333;
-  --system: #aaa;
-  --send: linear-gradient(to right, #5bff9f, #3effe0);
-  --next: linear-gradient(to right, #ff8f70, #ff5b9f);
+const socket = io();
+
+const input = document.getElementById("msg");
+const sendBtn = document.getElementById("send");
+const chatBox = document.getElementById("chat-box");
+const status = document.getElementById("status");
+const flagDisplay = document.getElementById("flagDisplay");
+const onlineCount = document.getElementById("online-count");
+const themeToggle = document.getElementById("themeToggle");
+
+let myCountry = "🌍";
+let myFlag = "🌐";
+
+function countryToFlagEmoji(cc) {
+  return cc.toUpperCase().replace(/./g, char =>
+    String.fromCodePoint(127397 + char.charCodeAt())
+  );
 }
 
-body.light {
-  --bg: #f9f9f9;
-  --card: #fff;
-  --text: #111;
-  --you: #3ecf8e;
-  --stranger: #d81b60;
-  --input: #eee;
-  --system: #777;
-  --send: linear-gradient(to right, #3ecf8e, #26c6da);
-  --next: linear-gradient(to right, #ff8a65, #f06292);
+fetch("https://ipinfo.io/json?token=8ac26849c86146")
+  .then(res => res.json())
+  .then(data => {
+    myCountry = data.country || "🌍";
+    myFlag = countryToFlagEmoji(myCountry);
+    socket.emit("findPartner", { country: myCountry, flag: myFlag });
+  });
+
+function appendMessage(type, msg) {
+  const div = document.createElement("div");
+  div.className = type;
+  div.textContent = msg;
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+function sendMessage() {
+  const msg = input.value.trim();
+  if (!msg) return;
+  socket.emit("message", msg);
+  appendMessage("you", `You: ${msg}`);
+  input.value = "";
+  socket.emit("stopTyping");
 }
 
-body {
-  font-family: 'Inter', sans-serif;
-  background-color: var(--bg);
-  color: var(--text);
-  height: 100vh;
-  width: 100vw;
-  overflow: hidden;
-  transition: 0.3s ease;
-}
+sendBtn.onclick = sendMessage;
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") sendMessage();
+  else socket.emit("typing");
+});
+input.addEventListener("keyup", () => {
+  if (input.value.trim() === "") socket.emit("stopTyping");
+});
 
-.header {
-  width: 100%;
-  height: 60px;
-  background-color: var(--card);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 10;
-}
+socket.on("partnerFound", (userData) => {
+  status.textContent = `Stranger connected from ${userData.flag} ${userData.country}`;
+  flagDisplay.textContent = `${userData.flag}`;
+});
 
-.logo {
-  font-size: 20px;
-  font-weight: bold;
-}
+socket.on("partnerDisconnected", () => {
+  appendMessage("system", "Stranger disconnected. Searching for a new one...");
+  socket.emit("findPartner", { country: myCountry, flag: myFlag });
+});
 
-.right-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
+socket.on("message", (msg) => appendMessage("stranger", `Stranger: ${msg}`));
+socket.on("typing", () => status.textContent = "Stranger is typing...");
+socket.on("stopTyping", () => status.textContent = "Stranger connected.");
+socket.on("updateUserCount", (count) => {
+  onlineCount.textContent = `${count}+ online`;
+});
 
-#online-count {
-  font-size: 16px;
-  color: var(--system);
-}
-
-.chat-container {
-  position: absolute;
-  top: 60px;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background-color: var(--card);
-  display: flex;
-  flex-direction: column;
-  padding: 16px;
-  gap: 10px;
-}
-
-#status, #flagDisplay {
-  text-align: center;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--system);
-}
-
-#chat-box {
-  flex: 1;
-  overflow-y: auto;
-  background: var(--input);
-  padding: 12px;
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  scroll-behavior: smooth;
-}
-
-.you {
-  align-self: flex-end;
-  background: var(--you);
-  color: #000;
-  padding: 10px 14px;
-  border-radius: 16px 16px 2px 16px;
-  max-width: 75%;
-  word-wrap: break-word;
-  animation: fadeIn 0.2s ease;
-}
-
-.stranger {
-  align-self: flex-start;
-  background: var(--stranger);
-  color: #fff;
-  padding: 10px 14px;
-  border-radius: 16px 16px 16px 2px;
-  max-width: 75%;
-  word-wrap: break-word;
-  animation: fadeIn 0.2s ease;
-}
-
-.system {
-  text-align: center;
-  font-style: italic;
-  font-size: 13px;
-  color: var(--system);
-  animation: fadeIn 0.3s ease;
-}
-
-#msg {
-  padding: 16px;
-  border: none;
-  border-radius: 10px;
-  background-color: var(--input);
-  color: var(--text);
-  font-size: 16px;
-  width: 100%;
-  outline: none;
-}
-
-button {
-  padding: 14px;
-  border: none;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: 0.2s ease;
-  color: white;
-  width: 100%;
-}
-
-#send {
-  background: var(--send);
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-#chat-box::-webkit-scrollbar {
-  width: 6px;
-}
-#chat-box::-webkit-scrollbar-thumb {
-  background: #777;
-  border-radius: 5px;
-}
+themeToggle.onclick = () => {
+  document.body.classList.toggle("light");
+  themeToggle.textContent = document.body.classList.contains("light") ? "🌙" : "☀️";
+};
