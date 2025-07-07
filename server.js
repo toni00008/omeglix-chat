@@ -14,24 +14,80 @@ app.get("/video", (req, res) => {
   res.sendFile(__dirname + "/public/video.html");
 });
 
-let waiting = null;
+// ========== TEXT CHAT ==========
+let textQueue = [];
 
-io.on("connection", (socket) => {
-  console.log(`User connected: ${socket.id}`);
+io.of("/").on("connection", (socket) => {
+  console.log(`[TEXT] User connected: ${socket.id}`);
+
+  socket.on("findPartner", () => {
+    if (textQueue.length > 0) {
+      const partner = textQueue.shift();
+      socket.partner = partner;
+      partner.partner = socket;
+
+      socket.emit("partnerFound");
+      partner.emit("partnerFound");
+    } else {
+      textQueue.push(socket);
+    }
+  });
+
+  socket.on("message", (msg) => {
+    if (socket.partner) {
+      socket.partner.emit("message", msg);
+    }
+  });
+
+  socket.on("typing", () => {
+    if (socket.partner) {
+      socket.partner.emit("typing");
+    }
+  });
+
+  socket.on("stopTyping", () => {
+    if (socket.partner) {
+      socket.partner.emit("stopTyping");
+    }
+  });
+
+  socket.on("disconnect", () => {
+    console.log(`[TEXT] Disconnected: ${socket.id}`);
+    if (socket.partner) {
+      socket.partner.emit("partnerDisconnected");
+      socket.partner.partner = null;
+    } else {
+      textQueue = textQueue.filter(s => s.id !== socket.id);
+    }
+  });
+
+  socket.on("next", () => {
+    if (socket.partner) {
+      socket.partner.emit("partnerDisconnected");
+      socket.partner.partner = null;
+      socket.partner = null;
+    }
+    socket.emit("findPartner");
+  });
+});
+
+// ========== VIDEO CHAT ==========
+let videoWaiting = null;
+
+io.of("/video").on("connection", (socket) => {
+  console.log(`[VIDEO] Connected: ${socket.id}`);
 
   socket.on("readyForCall", () => {
-    if (waiting) {
-      // Pair with waiting user
-      socket.partner = waiting;
-      waiting.partner = socket;
+    if (videoWaiting) {
+      socket.partner = videoWaiting;
+      videoWaiting.partner = socket;
 
-      socket.emit("offer", waiting.offer);
-      waiting = null;
+      // Send offer from waiting user to new user
+      socket.emit("offer", videoWaiting.offer);
+      videoWaiting = null;
     } else {
-      // Wait for partner
-      waiting = socket;
+      videoWaiting = socket;
 
-      // Prepare to send offer later
       socket.on("offer", (offer) => {
         socket.offer = offer;
       });
@@ -59,14 +115,14 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    if (waiting === socket) {
-      waiting = null;
+    if (videoWaiting === socket) {
+      videoWaiting = null;
     }
     if (socket.partner) {
       socket.partner.emit("stranger-disconnected");
       socket.partner.partner = null;
     }
-    console.log(`User disconnected: ${socket.id}`);
+    console.log(`[VIDEO] Disconnected: ${socket.id}`);
   });
 });
 
