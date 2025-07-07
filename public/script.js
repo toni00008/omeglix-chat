@@ -1,64 +1,93 @@
 const socket = io();
+
 const input = document.getElementById("input");
 const sendBtn = document.getElementById("sendBtn");
 const chatbox = document.getElementById("chatbox");
 const status = document.getElementById("status");
 const onlineCount = document.getElementById("onlineCount");
 
-let myCountry = "🌍";
-let myFlag = "🌐";
+let myCountry = "Unknown";
+let myFlag = "🌍";
 
-fetch("https://ipinfo.io/json?token=8ac26849c86146")
+// Get user location via IP
+fetch("https://ipinfo.io/json?token=8ac26849c86146") // Replace with your token if needed
   .then(res => res.json())
   .then(data => {
-    myCountry = data.country;
-    myFlag = countryToFlagEmoji(data.country);
-    socket.emit("findPartner", { country: myCountry, flag: myFlag });
+    myCountry = data.country || "Unknown";
+    myFlag = countryToFlagEmoji(myCountry);
+    findStranger();
+  }).catch(() => {
+    findStranger(); // Still try to connect even if IP lookup fails
   });
 
-function countryToFlagEmoji(cc) {
-  return cc.toUpperCase().replace(/./g, char =>
-    String.fromCodePoint(127397 + char.charCodeAt())
-  );
+function countryToFlagEmoji(code) {
+  return code
+    .toUpperCase()
+    .replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt()));
 }
 
-sendBtn.onclick = sendMessage;
-input.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") sendMessage();
-  else socket.emit("typing");
-});
-input.addEventListener("keyup", () => {
-  if (input.value.trim() === "") socket.emit("stopTyping");
-});
+function findStranger() {
+  status.innerText = "🔍 Searching for a stranger...";
+  socket.emit("findPartner", { country: myCountry, flag: myFlag });
+}
 
 function sendMessage() {
   const msg = input.value.trim();
   if (!msg) return;
   socket.emit("message", msg);
-  addMessage("you", msg);
+  appendMessage("you", msg);
   input.value = "";
   socket.emit("stopTyping");
 }
 
-function addMessage(sender, text) {
-  const div = document.createElement("div");
-  div.classList.add("message", sender);
-  div.innerText = `${sender === "you" ? "You" : "Stranger"}: ${text}`;
-  chatbox.appendChild(div);
+function appendMessage(sender, text) {
+  const msgEl = document.createElement("div");
+  msgEl.classList.add("message", sender);
+  msgEl.innerText = `${sender === "you" ? "You" : "Stranger"}: ${text}`;
+  chatbox.appendChild(msgEl);
   chatbox.scrollTop = chatbox.scrollHeight;
 }
 
-// Events
+// Send on button click or Enter
+sendBtn.onclick = sendMessage;
+input.addEventListener("keydown", e => {
+  if (e.key === "Enter") sendMessage();
+  else socket.emit("typing");
+});
+
+input.addEventListener("keyup", e => {
+  if (input.value.trim() === "") socket.emit("stopTyping");
+});
+
+// Incoming events
 socket.on("partnerFound", (userData) => {
-  status.innerText = `Stranger connected from ${userData.flag} ${userData.country}`;
+  status.innerText = `✅ Stranger connected from ${userData.flag} ${userData.country}`;
 });
+
 socket.on("partnerDisconnected", () => {
-  status.innerText = "Stranger disconnected. Searching again...";
-  socket.emit("findPartner", { country: myCountry, flag: myFlag });
+  status.innerText = "⚠️ Stranger disconnected. Finding new one...";
+  chatbox.innerHTML = "";
+  findStranger();
 });
-socket.on("message", (msg) => addMessage("stranger", msg));
-socket.on("typing", () => status.innerText = "Stranger is typing...");
-socket.on("stopTyping", () => status.innerText = "Stranger connected.");
+
+socket.on("message", (msg) => appendMessage("stranger", msg));
+
+socket.on("typing", () => {
+  status.innerText = "✍️ Stranger is typing...";
+});
+
+socket.on("stopTyping", () => {
+  status.innerText = `✅ Stranger connected`;
+});
+
 socket.on("updateUserCount", (count) => {
-  onlineCount.innerText = `${count}+ online`;
+  onlineCount.innerText = `${count}+`;
 });
+
+// Theme toggle
+const themeToggle = document.getElementById("themeToggle");
+themeToggle.addEventListener("click", () => {
+  document.body.classList.toggle("dark");
+  themeToggle.innerText = document.body.classList.contains("dark") ? "☀️" : "🌙";
+});
+

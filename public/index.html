@@ -5,110 +5,23 @@
   <title>Omeglix – Stranger Chat</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="style.css">
-  <style>
-    body {
-      font-family: "Segoe UI", sans-serif;
-      background: #fff;
-      color: #111;
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
-
-    #topbar {
-      background: #f4f4f4;
-      padding: 10px 15px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid #ddd;
-    }
-
-    #logo {
-      font-weight: bold;
-      font-size: 18px;
-    }
-
-    #onlineCount {
-      font-size: 14px;
-      color: #444;
-    }
-
-    #chatbox {
-      flex: 1;
-      overflow-y: auto;
-      padding: 15px;
-    }
-
-    .message {
-      margin: 5px 0;
-      padding: 10px;
-      border-radius: 12px;
-      max-width: 80%;
-    }
-
-    .you {
-      background: #1db954;
-      color: white;
-      align-self: flex-end;
-      text-align: right;
-    }
-
-    .stranger {
-      background: #eee;
-      color: #111;
-      align-self: flex-start;
-    }
-
-    #inputArea {
-      display: flex;
-      padding: 10px;
-      background: #fff;
-      border-top: 1px solid #ccc;
-    }
-
-    #input {
-      flex: 1;
-      padding: 10px;
-      border-radius: 20px;
-      border: 1px solid #ccc;
-    }
-
-    #sendBtn {
-      margin-left: 10px;
-      background: #1db954;
-      border: none;
-      color: white;
-      padding: 10px 16px;
-      border-radius: 20px;
-      cursor: pointer;
-    }
-
-    #status {
-      text-align: center;
-      padding: 8px;
-      font-size: 14px;
-      color: #777;
-    }
-  </style>
 </head>
-<body>
+<body class="light">
 
-  <div id="topbar">
-    <div id="logo">🌐 Omeglix</div>
-    <div id="onlineCount">0+ online</div>
-    <div id="themeToggle">🌙</div>
-  </div>
+  <header class="topbar">
+    <div class="logo">🌐 Omeglix</div>
+    <div class="online-status"><span id="onlineCount">0+</span> online</div>
+    <div class="theme-toggle" id="themeToggle">🌙</div>
+  </header>
 
-  <div id="status">Searching for stranger...</div>
+  <div id="status" class="status">🔍 Searching for a stranger...</div>
 
-  <div id="chatbox"></div>
+  <main id="chatbox" class="chatbox"></main>
 
-  <div id="inputArea">
-    <input id="input" type="text" placeholder="Type your message..." />
+  <footer class="input-area">
+    <input id="input" type="text" placeholder="Type your message..." autocomplete="off" />
     <button id="sendBtn">Send</button>
-  </div>
+  </footer>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
