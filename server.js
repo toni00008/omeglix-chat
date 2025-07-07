@@ -1,122 +1,82 @@
 const express = require("express");
 const app = express();
 const http = require("http").createServer(app);
-const { Server } = require("socket.io");
-const io = new Server(http);
+const io = require("socket.io")(http);
 const path = require("path");
+
+const PORT = process.env.PORT || 3000;
 
 app.use(express.static(path.join(__dirname, "public")));
 
-app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/public/index.html");
-});
-
-app.get("/video", (req, res) => {
-  res.sendFile(__dirname + "/public/video.html");
-});
-
-// ----- TEXT CHAT -----
-let textQueue = [];
-let onlineUsers = new Set();
+let waitingUsers = [];
+let allUsers = new Set();
 
 io.on("connection", (socket) => {
-  onlineUsers.add(socket.id);
-  io.emit("updateUserCount", onlineUsers.size);
+  allUsers.add(socket);
 
-  socket.on("findPartner", (userData) => {
-    socket.userData = userData;
+  // Update online users
+  io.emit("updateUserCount", allUsers.size);
 
-    if (textQueue.length > 0) {
-      const partner = textQueue.shift();
-      socket.partner = partner;
-      partner.partner = socket;
-
-      socket.emit("partnerFound", partner.userData);
-      partner.emit("partnerFound", socket.userData);
-    } else {
-      textQueue.push(socket);
-    }
+  socket.on("findPartner", (data) => {
+    socket.country = data.country || "🌍";
+    socket.flag = data.flag || "🌐";
+    waitingUsers.push(socket);
+    matchUsers();
   });
 
   socket.on("message", (msg) => {
-    if (socket.partner) socket.partner.emit("message", msg);
+    if (socket.partner) {
+      socket.partner.emit("message", msg);
+    }
   });
 
   socket.on("typing", () => {
-    if (socket.partner) socket.partner.emit("typing");
+    if (socket.partner) {
+      socket.partner.emit("typing");
+    }
   });
 
   socket.on("stopTyping", () => {
-    if (socket.partner) socket.partner.emit("stopTyping");
-  });
-
-  socket.on("next", () => {
     if (socket.partner) {
-      socket.partner.emit("partnerDisconnected");
-      socket.partner.partner = null;
+      socket.partner.emit("stopTyping");
     }
-    socket.partner = null;
-    socket.emit("findPartner", socket.userData);
   });
 
   socket.on("disconnect", () => {
-    onlineUsers.delete(socket.id);
-    io.emit("updateUserCount", onlineUsers.size);
+    allUsers.delete(socket);
+    io.emit("updateUserCount", allUsers.size);
 
+    // Remove from waiting
+    waitingUsers = waitingUsers.filter((s) => s !== socket);
+
+    // Disconnect partner
     if (socket.partner) {
       socket.partner.emit("partnerDisconnected");
       socket.partner.partner = null;
-    } else {
-      textQueue = textQueue.filter(s => s !== socket);
     }
   });
 });
 
-// ----- VIDEO CHAT -----
-let videoQueue = [];
+function matchUsers() {
+  while (waitingUsers.length >= 2) {
+    const user1 = waitingUsers.shift();
+    const user2 = waitingUsers.shift();
 
-io.of("/video").on("connection", (socket) => {
-  if (videoQueue.length > 0) {
-    const partner = videoQueue.shift();
-    socket.partner = partner;
-    partner.partner = socket;
+    user1.partner = user2;
+    user2.partner = user1;
 
-    partner.emit("offer", partner.offer);
-  } else {
-    videoQueue.push(socket);
+    user1.emit("partnerFound", {
+      country: user2.country,
+      flag: user2.flag,
+    });
+
+    user2.emit("partnerFound", {
+      country: user1.country,
+      flag: user1.flag,
+    });
   }
+}
 
-  socket.on("offer", (offer) => {
-    socket.offer = offer;
-  });
-
-  socket.on("answer", (answer) => {
-    if (socket.partner) socket.partner.emit("answer", answer);
-  });
-
-  socket.on("ice-candidate", (candidate) => {
-    if (socket.partner) socket.partner.emit("ice-candidate", candidate);
-  });
-
-  socket.on("end", () => {
-    if (socket.partner) {
-      socket.partner.emit("stranger-disconnected");
-      socket.partner.partner = null;
-    }
-    socket.partner = null;
-  });
-
-  socket.on("disconnect", () => {
-    if (socket.partner) {
-      socket.partner.emit("stranger-disconnected");
-      socket.partner.partner = null;
-    } else {
-      videoQueue = videoQueue.filter(s => s !== socket);
-    }
-  });
-});
-
-const PORT = process.env.PORT || 3000;
 http.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
