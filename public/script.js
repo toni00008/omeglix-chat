@@ -1,5 +1,4 @@
 const socket = io();
-
 const input = document.getElementById("input");
 const sendBtn = document.getElementById("sendBtn");
 const chatbox = document.getElementById("chatbox");
@@ -9,29 +8,18 @@ const onlineCount = document.getElementById("onlineCount");
 let myCountry = "🌍";
 let myFlag = "🌐";
 
-fetch("https://ipinfo.io/json?token=8ac26849c86146") // Use your own free token
+fetch("https://ipinfo.io/json?token=8ac26849c86146")
   .then(res => res.json())
   .then(data => {
     myCountry = data.country;
     myFlag = countryToFlagEmoji(data.country);
-    findPartner();
+    socket.emit("findPartner", { country: myCountry, flag: myFlag });
   });
 
-function findPartner() {
-  socket.emit("findPartner", {
-    country: myCountry,
-    flag: myFlag
-  });
-  status.innerText = "Searching for stranger...";
-}
-
-// UTIL
-function countryToFlagEmoji(countryCode) {
-  return countryCode
-    .toUpperCase()
-    .replace(/./g, c => 
-      String.fromCodePoint(127397 + c.charCodeAt())
-    );
+function countryToFlagEmoji(cc) {
+  return cc.toUpperCase().replace(/./g, char =>
+    String.fromCodePoint(127397 + char.charCodeAt())
+  );
 }
 
 sendBtn.onclick = sendMessage;
@@ -39,8 +27,7 @@ input.addEventListener("keydown", (e) => {
   if (e.key === "Enter") sendMessage();
   else socket.emit("typing");
 });
-
-input.addEventListener("keyup", (e) => {
+input.addEventListener("keyup", () => {
   if (input.value.trim() === "") socket.emit("stopTyping");
 });
 
@@ -61,29 +48,17 @@ function addMessage(sender, text) {
   chatbox.scrollTop = chatbox.scrollHeight;
 }
 
-// SOCKET EVENTS
-
+// Events
 socket.on("partnerFound", (userData) => {
-  status.innerText = `Stranger connected! ${userData.flag} ${userData.country}`;
+  status.innerText = `Stranger connected from ${userData.flag} ${userData.country}`;
 });
-
 socket.on("partnerDisconnected", () => {
-  status.innerText = "Stranger disconnected. Searching...";
-  findPartner();
+  status.innerText = "Stranger disconnected. Searching again...";
+  socket.emit("findPartner", { country: myCountry, flag: myFlag });
 });
-
-socket.on("message", (msg) => {
-  addMessage("stranger", msg);
-});
-
-socket.on("typing", () => {
-  status.innerText = "Stranger is typing...";
-});
-
-socket.on("stopTyping", () => {
-  status.innerText = "Stranger connected!";
-});
-
+socket.on("message", (msg) => addMessage("stranger", msg));
+socket.on("typing", () => status.innerText = "Stranger is typing...");
+socket.on("stopTyping", () => status.innerText = "Stranger connected.");
 socket.on("updateUserCount", (count) => {
   onlineCount.innerText = `${count}+ online`;
 });
