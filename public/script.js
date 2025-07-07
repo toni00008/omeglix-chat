@@ -1,93 +1,89 @@
 const socket = io();
 
-// Elements
-const chatBox = document.getElementById("chatBox");
-const messageInput = document.getElementById("messageInput");
+const input = document.getElementById("input");
 const sendBtn = document.getElementById("sendBtn");
-const typingIndicator = document.getElementById("typingIndicator");
-const nextBtn = document.getElementById("nextBtn");
+const chatbox = document.getElementById("chatbox");
+const status = document.getElementById("status");
 const onlineCount = document.getElementById("onlineCount");
 
-let isTyping = false;
+let myCountry = "🌍";
+let myFlag = "🌐";
 
-// Request to find a partner
-socket.emit("findPartner");
+fetch("https://ipinfo.io/json?token=8ac26849c86146") // Use your own free token
+  .then(res => res.json())
+  .then(data => {
+    myCountry = data.country;
+    myFlag = countryToFlagEmoji(data.country);
+    findPartner();
+  });
 
-// Partner found
-socket.on("partnerFound", () => {
-  appendMessage("🔗 Stranger connected!", "system");
-  typingIndicator.innerText = "";
+function findPartner() {
+  socket.emit("findPartner", {
+    country: myCountry,
+    flag: myFlag
+  });
+  status.innerText = "Searching for stranger...";
+}
+
+// UTIL
+function countryToFlagEmoji(countryCode) {
+  return countryCode
+    .toUpperCase()
+    .replace(/./g, c => 
+      String.fromCodePoint(127397 + c.charCodeAt())
+    );
+}
+
+sendBtn.onclick = sendMessage;
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") sendMessage();
+  else socket.emit("typing");
 });
 
-// Stranger disconnected
-socket.on("partnerDisconnected", () => {
-  appendMessage("🚫 Stranger disconnected.", "system");
-  typingIndicator.innerText = "";
-});
-
-// New message
-socket.on("message", (msg) => {
-  appendMessage(`Stranger: ${msg}`, "stranger");
-});
-
-// Typing indicators
-socket.on("typing", () => {
-  typingIndicator.innerText = "Stranger is typing...";
-});
-
-socket.on("stopTyping", () => {
-  typingIndicator.innerText = "";
-});
-
-// Send message
-sendBtn.addEventListener("click", sendMessage);
-messageInput.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") {
-    sendMessage();
-  } else {
-    if (!isTyping) {
-      isTyping = true;
-      socket.emit("typing");
-    }
-
-    clearTimeout(window.typingTimeout);
-    window.typingTimeout = setTimeout(() => {
-      isTyping = false;
-      socket.emit("stopTyping");
-    }, 1000);
-  }
+input.addEventListener("keyup", (e) => {
+  if (input.value.trim() === "") socket.emit("stopTyping");
 });
 
 function sendMessage() {
-  const msg = messageInput.value.trim();
+  const msg = input.value.trim();
   if (!msg) return;
-
-  appendMessage(`You: ${msg}`, "you");
   socket.emit("message", msg);
-  messageInput.value = "";
+  addMessage("you", msg);
+  input.value = "";
   socket.emit("stopTyping");
-  isTyping = false;
 }
 
-// Next button
-nextBtn.addEventListener("click", () => {
-  chatBox.innerHTML = "";
-  socket.emit("next");
-  appendMessage("🔍 Looking for a new stranger...", "system");
+function addMessage(sender, text) {
+  const div = document.createElement("div");
+  div.classList.add("message", sender);
+  div.innerText = `${sender === "you" ? "You" : "Stranger"}: ${text}`;
+  chatbox.appendChild(div);
+  chatbox.scrollTop = chatbox.scrollHeight;
+}
+
+// SOCKET EVENTS
+
+socket.on("partnerFound", (userData) => {
+  status.innerText = `Stranger connected! ${userData.flag} ${userData.country}`;
 });
 
-// Append message to chat
-function appendMessage(msg, type) {
-  const msgDiv = document.createElement("div");
-  msgDiv.classList.add("message", type);
-  msgDiv.innerText = msg;
-  chatBox.appendChild(msgDiv);
-  chatBox.scrollTop = chatBox.scrollHeight;
-}
+socket.on("partnerDisconnected", () => {
+  status.innerText = "Stranger disconnected. Searching...";
+  findPartner();
+});
 
-// Show online user count
-socket.on("userCount", (count) => {
-  if (onlineCount) {
-    onlineCount.innerText = `${count}+ Online`;
-  }
+socket.on("message", (msg) => {
+  addMessage("stranger", msg);
+});
+
+socket.on("typing", () => {
+  status.innerText = "Stranger is typing...";
+});
+
+socket.on("stopTyping", () => {
+  status.innerText = "Stranger connected!";
+});
+
+socket.on("updateUserCount", (count) => {
+  onlineCount.innerText = `${count}+ online`;
 });
